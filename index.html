@@ -3,16 +3,36 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Flappy Bird Red - Fire Line Fixed</title>
+<title>Flappy Bird Responsive Layout</title>
 <style>
     body {
         margin: 0;
         background: #70c5ce;
-        overflow: hidden;
         font-family: Arial, sans-serif;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
     }
+
+    /* Game wrapper for desktop */
+    .game-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+
+    /* Canvas style */
+    #gameCanvas {
+        background: #70c5ce;
+        display: block;
+    }
+
+    /* Score board */
     #scoreBoard {
-        position: fixed;
+        position: absolute;
         top: 10px;
         left: 50%;
         transform: translateX(-50%);
@@ -21,207 +41,90 @@
         text-shadow: 2px 2px 4px #000;
         z-index: 10;
     }
-    #ad-container {
+
+    /* Ads for desktop (side ads) */
+    .side-ad {
+        width: 120px;
+        height: 600px;
+        background: white;
+        border: 1px solid #ccc;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        margin: 0 10px;
+    }
+
+    /* Mobile bottom ad */
+    #bottom-ad {
+        display: none;
         position: fixed;
         bottom: 0;
         left: 0;
         width: 100%;
-        text-align: center;
-        background: #fff;
-        padding: 5px;
+        height: 50px;
+        background: white;
         border-top: 1px solid #ccc;
+        text-align: center;
+        line-height: 50px;
+        font-size: 14px;
         z-index: 10;
     }
-    canvas {
-        display: block;
-        margin: 0 auto;
-        background: #70c5ce;
+
+    /* Responsive rules */
+    @media (min-width: 1024px) {
+        .side-ad { display: flex; }
+        #bottom-ad { display: none; }
+    }
+    @media (max-width: 1023px) {
+        #bottom-ad { display: block; }
+        .side-ad { display: none; }
     }
 </style>
 </head>
 <body>
 
-<div id="scoreBoard">Score: 0</div>
-<canvas id="gameCanvas"></canvas>
+<!-- Left ad for desktop -->
+<div class="side-ad">[Left Ad]</div>
 
-<div id="ad-container">
-    <p style="font-size:14px;color:#333;">[Ad Banner Here]</p>
+<!-- Game wrapper -->
+<div class="game-wrapper">
+    <div id="scoreBoard">Score: 0</div>
+    <canvas id="gameCanvas" width="320" height="480"></canvas>
 </div>
 
+<!-- Right ad for desktop -->
+<div class="side-ad">[Right Ad]</div>
+
+<!-- Bottom ad for mobile -->
+<div id="bottom-ad">[Bottom Ad]</div>
+
 <script>
-// ===== Responsive Setup =====
+// ===== Responsive Game Size =====
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-const baseWidth = 320;
-const baseHeight = 480;
-let scale = 1;
-
-function resizeCanvas() {
-    const w = window.innerWidth;
-    const h = window.innerHeight - 50; // minus ad height
-    scale = Math.min(w / baseWidth, h / baseHeight);
-    canvas.width = baseWidth * scale;
-    canvas.height = baseHeight * scale;
-
-    groundHeight = 60 * scale;
-    groundY = canvas.height - groundHeight;
-}
-let groundHeight;
-let groundY;
-resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
-
-// ===== GAME VARIABLES =====
-let frames = 0;
-let score = sessionStorage.getItem("flappyScore") ? parseInt(sessionStorage.getItem("flappyScore")) : 0;
-const gravity = 0.25 * scale;
-const jump = 4.6 * scale;
-let pipes = [];
-const pipeGap = 85 * scale;
-const pipeWidth = 53 * scale;
-let gameSpeed = 2 * scale;
-
-let state = 0;
-
-// ===== FIRE PARTICLES =====
-let fireParticles = [];
-function createFireParticle() {
-    fireParticles.push({
-        x: Math.random() * canvas.width,
-        y: groundY + Math.random() * 5,
-        size: Math.random() * 4 + 2,
-        speedY: Math.random() * -1 - 0.5,
-        alpha: 1
-    });
-}
-function drawFire() {
-    for (let i = 0; i < fireParticles.length; i++) {
-        let p = fireParticles[i];
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = rgba(255, ${Math.floor(100 + Math.random() * 155)}, 0, ${p.alpha});
-        ctx.fill();
-        ctx.closePath();
-
-        p.y += p.speedY;
-        p.alpha -= 0.02;
-
-        if (p.alpha <= 0) {
-            fireParticles.splice(i, 1);
-            i--;
-        }
+function resizeGame() {
+    if (window.innerWidth >= 1024) {
+        // Desktop - fixed mobile-like size
+        canvas.width = 320;
+        canvas.height = 480;
+    } else {
+        // Mobile - full width, height minus ad
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight - 50;
     }
 }
+resizeGame();
+window.addEventListener("resize", resizeGame);
 
-// ===== BIRD =====
-let bird = {
-    x: 50 * scale,
-    y: 150 * scale,
-    radius: 12 * scale,
-    speed: 0,
-    draw: function(){
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
-        ctx.fillStyle = "red";
-        ctx.fill();
-        ctx.closePath();
-    },
-    flap: function(){
-        this.speed = -jump;
-    },
-    update: function(){
-        this.speed += gravity;
-        this.y += this.speed;
-
-        if(this.y + this.radius >= groundY){
-            this.y = groundY - this.radius;
-            state = 2;
-        }
-    }
-};
-
-// ===== PIPES =====
-function spawnPipe(){
-    let maxPipeHeight = groundY - pipeGap - 50 * scale;
-    let yPos = -Math.random() * (maxPipeHeight / 2) - 100 * scale;
-    pipes.push({ x: canvas.width, y: yPos });
-}
-function drawPipes(){
-    ctx.fillStyle = "green";
-    pipes.forEach(p => {
-        ctx.fillRect(p.x, p.y, pipeWidth, 400 * scale);
-        ctx.fillRect(p.x, p.y + 400 * scale + pipeGap, pipeWidth, groundY - (p.y + 400 * scale + pipeGap));
-    });
-}
-function updatePipes(){
-    pipes.forEach((p, i) => {
-        p.x -= gameSpeed;
-        if (bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + pipeWidth &&
-            (bird.y - bird.radius < p.y + 400 * scale || bird.y + bird.radius > p.y + 400 * scale + pipeGap)) {
-            state = 2;
-        }
-
-        if(p.x + pipeWidth <= 0){
-            pipes.splice(i, 1);
-            score++;
-            sessionStorage.setItem("flappyScore", score);
-        }
-    });
-}
-
-// ===== GROUND LINE =====
-function drawGround(){
-    ctx.fillStyle = "red";
-    ctx.fillRect(0, groundY, canvas.width, 5 * scale);
-}
-
-// ===== GAME LOOP =====
-function draw(){
+// ===== Simple test draw =====
+function testDraw() {
     ctx.fillStyle = "#70c5ce";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    drawPipes();
-    bird.draw();
-    drawGround();
-    drawFire();
+    ctx.fillStyle = "red";
+    ctx.fillRect(0, canvas.height - 5, canvas.width, 5); // red bottom line
 }
-
-function update(){
-    if(state === 1){
-        bird.update();
-        if(frames % 100 === 0) spawnPipe();
-        updatePipes();
-        if(frames % 3 === 0) createFireParticle();
-    }
-}
-
-function loop(){
-    update();
-    draw();
-    document.getElementById("scoreBoard").innerText = "Score: " + score;
-    frames++;
-    requestAnimationFrame(loop);
-}
-
-// ===== CONTROLS =====
-canvas.addEventListener("click", function(){
-    if(state === 0){
-        state = 1;
-        bird.flap();
-    } else if(state === 1){
-        bird.flap();
-    } else if(state === 2){
-        state = 0;
-        score = 0;
-        sessionStorage.setItem("flappyScore", score);
-        pipes = [];
-        bird.y = 150 * scale;
-        bird.speed = 0;
-    }
-});
-
-loop();
+setInterval(testDraw, 30);
 </script>
 
 </body>
