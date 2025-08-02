@@ -122,15 +122,13 @@ window.addEventListener("resize", resizeGame);
 // ===== GAME VARIABLES =====
 let frames = 0;
 let score = sessionStorage.getItem("flappyScore") ? parseInt(sessionStorage.getItem("flappyScore")) : 0;
-const gravity = 0.15 * scale;
-const jump = 3 * scale;
+const gravity = 0.25 * scale;
+const jump = 4.6 * scale;
 let pipes = [];
 const pipeGap = 85 * scale;
 const pipeWidth = 53 * scale;
 let gameSpeed = 2 * scale;
 let state = 0;
-let bestScore = localStorage.getItem("flappyBestScore") ? parseInt(localStorage.getItem("flappyBestScore")) : 0;
-
 
 // ===== BIRD =====
 let bird = {
@@ -138,26 +136,24 @@ let bird = {
     y: 150 * scale,
     radius: 12 * scale,
     speed: 0,
-   function drawGameOverScreen() {
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = "white";
-    ctx.font = `bold ${32 * scale}px Arial`;
-    ctx.textAlign = "center";
-    ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 40 * scale);
-
-    ctx.font = `${20 * scale}px Arial`;
-    ctx.fillText(`Score: ${score}`, canvas.width / 2, canvas.height / 2);
-    ctx.fillText(`Best: ${bestScore}`, canvas.width / 2, canvas.height / 2 + 30 * scale);
-}
-
-function updateBestScore() {
-    if (score > bestScore) {
-        bestScore = score;
-        localStorage.setItem("flappyBestScore", bestScore);
+    draw: function(){
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+        ctx.fillStyle = "red";
+        ctx.fill();
+        ctx.closePath();
+    },
+    flap: function(){
+        this.speed = -jump;
+    },
+    update: function(){
+        this.speed += gravity;
+        this.y += this.speed;
+        if(this.y + this.radius >= groundY){
+            this.y = groundY - this.radius;
+            state = 2;
+        }
     }
-}
 };
 
 // ===== PIPES =====
@@ -216,6 +212,7 @@ function loop(){
     frames++;
     requestAnimationFrame(loop);
 }
+
 // ===== CONTROLS =====
 canvas.addEventListener("click", handleInput);
 canvas.addEventListener("touchstart", handleInput);
@@ -227,9 +224,7 @@ function handleInput(){
     } else if(state === 1){
         bird.flap();
     } else if(state === 2){
-        // Restart
         state = 0;
-        updateBestScore();
         score = 0;
         sessionStorage.setItem("flappyScore", score);
         pipes = [];
