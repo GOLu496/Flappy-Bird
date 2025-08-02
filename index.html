@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Flappy Bird Red - Fire Line</title>
+<title>Flappy Bird Red - Fire Line Fixed</title>
 <style>
     body {
         margin: 0;
@@ -59,11 +59,16 @@ let scale = 1;
 
 function resizeCanvas() {
     const w = window.innerWidth;
-    const h = window.innerHeight - 50;
+    const h = window.innerHeight - 50; // minus ad height
     scale = Math.min(w / baseWidth, h / baseHeight);
     canvas.width = baseWidth * scale;
     canvas.height = baseHeight * scale;
+
+    groundHeight = 60 * scale;
+    groundY = canvas.height - groundHeight;
 }
+let groundHeight;
+let groundY;
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
@@ -76,8 +81,6 @@ let pipes = [];
 const pipeGap = 85 * scale;
 const pipeWidth = 53 * scale;
 let gameSpeed = 2 * scale;
-let groundHeight = 60 * scale;
-const groundY = canvas.height - groundHeight;
 
 let state = 0;
 
@@ -97,7 +100,7 @@ function drawFire() {
         let p = fireParticles[i];
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${255}, ${Math.floor(100 + Math.random() * 155)}, 0, ${p.alpha})`;
+        ctx.fillStyle = rgba(255, ${Math.floor(100 + Math.random() * 155)}, 0, ${p.alpha});
         ctx.fill();
         ctx.closePath();
 
@@ -154,7 +157,6 @@ function drawPipes(){
 function updatePipes(){
     pipes.forEach((p, i) => {
         p.x -= gameSpeed;
-
         if (bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + pipeWidth &&
             (bird.y - bird.radius < p.y + 400 * scale || bird.y + bird.radius > p.y + 400 * scale + pipeGap)) {
             state = 2;
