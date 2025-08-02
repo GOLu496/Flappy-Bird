@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Flappy Bird Red with Ground Line</title>
+<title>Flappy Bird Red</title>
 <style>
     body {
         margin: 0;
@@ -166,6 +166,15 @@ canvas.addEventListener("click", function(){
     } else if(state === 2){ // Reset after game over
         state = 0;
         score = 0;
-        sessionStorage.setItem("flappyScore", score)
-            </script>
-    
+        sessionStorage.setItem("flappyScore", score);
+        pipes = [];
+        bird.y = 150;
+        bird.speed = 0;
+    }
+});
+
+loop();
+</script>
+
+</body>
+</html>
