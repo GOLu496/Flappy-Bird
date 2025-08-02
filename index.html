@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Flappy Bird Responsive + Ads</title>
 <style>
     body {
@@ -10,24 +10,24 @@
         background: #70c5ce;
         font-family: Arial, sans-serif;
         overflow: hidden;
-        display: flex;
-        justify-content: center;
-        align-items: center;
         height: 100vh;
-    }
-    /* Game wrapper */
-    .game-wrapper {
         display: flex;
-        align-items: center;
+    }
+    .side-ad {
+        background: white;
+        border: 1px solid #ccc;
+        display: none;
+        text-align: center;
+        overflow: hidden;
+    }
+    .game-wrapper {
+        flex: none;
+        display: flex;
         justify-content: center;
+        align-items: center;
+        background: #70c5ce;
         position: relative;
     }
-    /* Canvas */
-    #gameCanvas {
-        background: #70c5ce;
-        display: block;
-    }
-    /* Score */
     #scoreBoard {
         position: absolute;
         top: 10px;
@@ -38,18 +38,10 @@
         text-shadow: 2px 2px 4px #000;
         z-index: 10;
     }
-    /* Desktop ads */
-    .side-ad {
-        width: 120px;
-        height: 600px;
-        background: white;
-        border: 1px solid #ccc;
-        display: none;
-        justify-content: center;
-        align-items: center;
-        margin: 0 10px;
+    #gameCanvas {
+        background: #70c5ce;
+        display: block;
     }
-    /* Mobile bottom ad */
     #bottom-ad {
         display: none;
         position: fixed;
@@ -64,27 +56,37 @@
         font-size: 14px;
         z-index: 10;
     }
-    /* Responsive rules */
     @media (min-width: 1024px) {
-        .side-ad { display: flex; }
-        #bottom-ad { display: none; }
+        .side-ad {
+            display: block;
+        }
+        #bottom-ad {
+            display: none;
+        }
     }
     @media (max-width: 1023px) {
-        #bottom-ad { display: block; }
-        .side-ad { display: none; }
+        #bottom-ad {
+            display: block;
+        }
+        .side-ad {
+            display: none;
+        }
+        body {
+            flex-direction: column;
+        }
     }
 </style>
 </head>
 <body>
 
-<div class="side-ad">[Left Ad]</div>
+<div class="side-ad" id="leftAd">[Left Ad]</div>
 
 <div class="game-wrapper">
     <div id="scoreBoard">Score: 0</div>
     <canvas id="gameCanvas"></canvas>
 </div>
 
-<div class="side-ad">[Right Ad]</div>
+<div class="side-ad" id="rightAd">[Right Ad]</div>
 
 <div id="bottom-ad">[Bottom Ad]</div>
 
@@ -93,16 +95,20 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 let scale = 1;
-let groundHeight;
 let groundY;
+let groundHeight;
 
 function resizeGame() {
     if (window.innerWidth >= 1024) {
-        // Desktop fixed mobile-like size
-        canvas.width = 320;
-        canvas.height = 480;
+        let gameWidth = 360;
+        let gameHeight = 640;
+        canvas.width = gameWidth;
+        canvas.height = gameHeight;
+        let remainingWidth = window.innerWidth - gameWidth;
+        let sideWidth = remainingWidth / 2;
+        document.getElementById("leftAd").style.width = sideWidth + "px";
+        document.getElementById("rightAd").style.width = sideWidth + "px";
     } else {
-        // Mobile fullscreen minus bottom ad
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight - 50;
     }
@@ -116,41 +122,13 @@ window.addEventListener("resize", resizeGame);
 // ===== GAME VARIABLES =====
 let frames = 0;
 let score = sessionStorage.getItem("flappyScore") ? parseInt(sessionStorage.getItem("flappyScore")) : 0;
-const gravity = 0.25 * scale;
-const jump = 4.6 * scale;
+const gravity = 0.15 * scale;
+const jump = 3 * scale;
 let pipes = [];
 const pipeGap = 85 * scale;
 const pipeWidth = 53 * scale;
 let gameSpeed = 2 * scale;
 let state = 0;
-
-// ===== FIRE PARTICLES =====
-let fireParticles = [];
-function createFireParticle() {
-    fireParticles.push({
-        x: Math.random() * canvas.width,
-        y: groundY + Math.random() * 5,
-        size: Math.random() * 4 + 2,
-        speedY: Math.random() * -1 - 0.5,
-        alpha: 1
-    });
-}
-function drawFire() {
-    for (let i = 0; i < fireParticles.length; i++) {
-        let p = fireParticles[i];
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, ${Math.floor(100 + Math.random() * 155)}, 0, ${p.alpha})`;
-        ctx.fill();
-        ctx.closePath();
-        p.y += p.speedY;
-        p.alpha -= 0.02;
-        if (p.alpha <= 0) {
-            fireParticles.splice(i, 1);
-            i--;
-        }
-    }
-}
 
 // ===== BIRD =====
 let bird = {
@@ -163,8 +141,7 @@ let bird = {
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
         ctx.fillStyle = "red";
         ctx.fill();
-        ctx.closePath
-();
+        ctx.closePath();
     },
     flap: function(){
         this.speed = -jump;
@@ -220,14 +197,12 @@ function draw(){
     drawPipes();
     bird.draw();
     drawGround();
-    drawFire();
 }
 function update(){
     if(state === 1){
         bird.update();
         if(frames % 100 === 0) spawnPipe();
         updatePipes();
-        if(frames % 3 === 0) createFireParticle();
     }
 }
 function loop(){
