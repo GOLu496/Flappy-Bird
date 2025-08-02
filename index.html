@@ -1,240 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Flappy Bird Responsive + Ads</title>
-<style>
-    body {
-        margin: 0;
-        background: #70c5ce;
-        font-family: Arial, sans-serif;
-        overflow: hidden;
-        height: 100vh;
-        display: flex;
-    }
-    .side-ad {
-        background: white;
-        border: 1px solid #ccc;
-        display: none;
-        text-align: center;
-        overflow: hidden;
-    }
-    .game-wrapper {
-        flex: none;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        background: #70c5ce;
-        position: relative;
-    }
-    #scoreBoard {
-        position: absolute;
-        top: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 24px;
-        color: white;
-        text-shadow: 2px 2px 4px #000;
-        z-index: 10;
-    }
-    #gameCanvas {
-        background: #70c5ce;
-        display: block;
-    }
-    #bottom-ad {
-        display: none;
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        height: 50px;
-        background: white;
-        border-top: 1px solid #ccc;
-        text-align: center;
-        line-height: 50px;
-        font-size: 14px;
-        z-index: 10;
-    }
-    @media (min-width: 1024px) {
-        .side-ad {
-            display: block;
-        }
-        #bottom-ad {
-            display: none;
-        }
-    }
-    @media (max-width: 1023px) {
-        #bottom-ad {
-            display: block;
-        }
-        .side-ad {
-            display: none;
-        }
-        body {
-            flex-direction: column;
-        }
-    }
-</style>
+  <meta charset="UTF-8" />
+  <title>Flappy Bird Clone</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    canvas { display:block; margin:0 auto; background:#70c5ce; }
+    body { text-align:center; font-family:sans-serif; }
+    #score { position:absolute; top:10px; left:50%; transform:translateX(-50%); font-size:24px; color:#fff; }
+  </style>
 </head>
 <body>
+  <div id="score">Score: 0</div>
+  <canvas id="gameCanvas" width="320" height="480"></canvas>
+  <script>
+    const cvs = document.getElementById('gameCanvas');
+    const ctx = cvs.getContext('2d');
+    const scoreEl = document.getElementById('score');
 
-<div class="side-ad" id="leftAd">[Left Ad]</div>
+    const bird = new Image();
+    const bg = new Image();
+    const pipeNorth = new Image();
+    const pipeSouth = new Image();
+    const fg = new Image();
 
-<div class="game-wrapper">
-    <div id="scoreBoard">Score: 0</div>
-    <canvas id="gameCanvas"></canvas>
-</div>
+    bird.src = 'https://i.imgur.com/QKX6XHk.png';
+    pipeNorth.src = 'https://i.imgur.com/z4d4kWk.png';
+    pipeSouth.src = 'https://i.imgur.com/Y1oW1c6.png';
+    bg.src = ''; fg.src = '';
 
-<div class="side-ad" id="rightAd">[Right Ad]</div>
+    const gap = 120;
+    let constant;
 
-<div id="bottom-ad">[Bottom Ad]</div>
+    let bX = 50, bY = 150;
+    const gravity = 1.5;
+    const jump = 30;
 
-<script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+    let score = 0;
 
-let scale = 1;
-let groundY;
-let groundHeight;
+    document.addEventListener('keydown', () => bY -= jump);
+    cvs.addEventListener('click', () => bY -= jump);
 
-function resizeGame() {
-    if (window.innerWidth >= 1024) {
-        let gameWidth = 360;
-        let gameHeight = 640;
-        canvas.width = gameWidth;
-        canvas.height = gameHeight;
-        let remainingWidth = window.innerWidth - gameWidth;
-        let sideWidth = remainingWidth / 2;
-        document.getElementById("leftAd").style.width = sideWidth + "px";
-        document.getElementById("rightAd").style.width = sideWidth + "px";
-    } else {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight - 50;
-    }
-    scale = canvas.width / 320;
-    groundHeight = 60 * scale;
-    groundY = canvas.height - groundHeight;
-}
-resizeGame();
-window.addEventListener("resize", resizeGame);
+    const pipes = [];
+    pipes[0] = { x: cvs.width, y: 0 };
 
-// ===== GAME VARIABLES =====
-let frames = 0;
-let score = sessionStorage.getItem("flappyScore") ? parseInt(sessionStorage.getItem("flappyScore")) : 0;
-const gravity = 0.25 * scale;
-const jump = 4.6 * scale;
-let pipes = [];
-const pipeGap = 85 * scale;
-const pipeWidth = 53 * scale;
-let gameSpeed = 2 * scale;
-let state = 0;
+    function draw() {
+      ctx.fillStyle = "#70c5ce";
+      ctx.fillRect(0,0,cvs.width,cvs.height);
 
-// ===== BIRD =====
-let bird = {
-    x: 50 * scale,
-    y: 150 * scale,
-    radius: 12 * scale,
-    speed: 0,
-    draw: function(){
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
-        ctx.fillStyle = "red";
-        ctx.fill();
-        ctx.closePath();
-    },
-    flap: function(){
-        this.speed = -jump;
-    },
-    update: function(){
-        this.speed += gravity;
-        this.y += this.speed;
-        if(this.y + this.radius >= groundY){
-            this.y = groundY - this.radius;
-            state = 2;
+      for (let i = 0; i < pipes.length; i++) {
+        constant = pipeNorth.height + gap;
+        ctx.drawImage(pipeNorth, pipes[i].x, pipes[i].y);
+        ctx.drawImage(pipeSouth, pipes[i].x, pipes[i].y + constant);
+
+        pipes[i].x -= 2;
+
+        if (pipes[i].x === 150) {
+          pipes.push({ x: cvs.width, y: Math.floor(Math.random() * pipeNorth.height) - pipeNorth.height });
         }
-    }
-};
 
-// ===== PIPES =====
-function spawnPipe(){
-    let maxPipeHeight = groundY - pipeGap - 50 * scale;
-    let yPos = -Math.random() * (maxPipeHeight / 2) - 100 * scale;
-    pipes.push({ x: canvas.width, y: yPos });
-}
-function drawPipes(){
-    ctx.fillStyle = "green";
-    pipes.forEach(p => {
-        ctx.fillRect(p.x, p.y, pipeWidth, 400 * scale);
-        ctx.fillRect(p.x, p.y + 400 * scale + pipeGap, pipeWidth, groundY - (p.y + 400 * scale + pipeGap));
-    });
-}
-function updatePipes(){
-    pipes.forEach((p, i) => {
-        p.x -= gameSpeed;
-        if (bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + pipeWidth &&
-            (bird.y - bird.radius < p.y + 400 * scale || bird.y + bird.radius > p.y + 400 * scale + pipeGap)) {
-            state = 2;
+        if (bX + bird.width >= pipes[i].x &&
+            bX <= pipes[i].x + pipeNorth.width &&
+            (bY <= pipes[i].y + pipeNorth.height ||
+             bY + bird.height >= pipes[i].y + constant) ||
+            bY + bird.height >= cvs.height) {
+          location.reload(); // restart game
         }
-        if(p.x + pipeWidth <= 0){
-            pipes.splice(i, 1);
-            score++;
-            sessionStorage.setItem("flappyScore", score);
+
+        if (pipes[i].x === 5) {
+          score++;
+          scoreEl.textContent = 'Score: ' + score;
         }
-    });
-}
+      }
 
-// ===== GROUND =====
-function drawGround(){
-    ctx.fillStyle = "red";
-    ctx.fillRect(0, groundY, canvas.width, 5 * scale);
-}
+      ctx.drawImage(bird, bX, bY);
+      bY += gravity;
 
-// ===== GAME LOOP =====
-function draw(){
-    ctx.fillStyle = "#70c5ce";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    drawPipes();
-    bird.draw();
-    drawGround();
-}
-function update(){
-    if(state === 1){
-        bird.update();
-        if(frames % 100 === 0) spawnPipe();
-        updatePipes();
+      requestAnimationFrame(draw);
     }
-}
-function loop(){
-    update();
-    draw();
-    document.getElementById("scoreBoard").innerText = "Score: " + score;
-    frames++;
-    requestAnimationFrame(loop);
-}
 
-// ===== CONTROLS =====
-canvas.addEventListener("click", handleInput);
-canvas.addEventListener("touchstart", handleInput);
-
-function handleInput(){
-    if(state === 0){
-        state = 1;
-        bird.flap();
-    } else if(state === 1){
-        bird.flap();
-    } else if(state === 2){
-        state = 0;
-        score = 0;
-        sessionStorage.setItem("flappyScore", score);
-        pipes = [];
-        bird.y = 150 * scale;
-        bird.speed = 0;
-    }
-}
-
-loop();
-</script>
-
+    // Wait till images loaded to start
+    bird.onload = function() {
+      pipeNorth.onload = pipeSouth.onload = function() {
+        draw();
+      };
+    };
+  </script>
 </body>
 </html>
