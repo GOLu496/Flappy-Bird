@@ -2,18 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Flappy Bird Red</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Flappy Bird Red - Responsive</title>
 <style>
     body {
         margin: 0;
         background: #70c5ce;
         overflow: hidden;
         font-family: Arial, sans-serif;
-    }
-    #gameCanvas {
-        display: block;
-        margin: 0 auto;
-        background: #70c5ce;
     }
     #scoreBoard {
         position: fixed;
@@ -36,12 +32,17 @@
         border-top: 1px solid #ccc;
         z-index: 10;
     }
+    canvas {
+        display: block;
+        margin: 0 auto;
+        background: #70c5ce;
+    }
 </style>
 </head>
 <body>
 
 <div id="scoreBoard">Score: 0</div>
-<canvas id="gameCanvas" width="320" height="480"></canvas>
+<canvas id="gameCanvas"></canvas>
 
 <div id="ad-container">
     <!-- Replace with your real AdSense code after approval -->
@@ -49,27 +50,45 @@
 </div>
 
 <script>
-// ===== GAME VARIABLES =====
+// ===== Responsive Setup =====
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+
+// Base resolution for scaling
+const baseWidth = 320;
+const baseHeight = 480;
+let scale = 1;
+
+function resizeCanvas() {
+    // Match canvas to screen size but keep aspect ratio
+    const w = window.innerWidth;
+    const h = window.innerHeight - 50; // minus ad height
+    scale = Math.min(w / baseWidth, h / baseHeight);
+    canvas.width = baseWidth * scale;
+    canvas.height = baseHeight * scale;
+}
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+
+// ===== GAME VARIABLES =====
 let frames = 0;
 let score = sessionStorage.getItem("flappyScore") ? parseInt(sessionStorage.getItem("flappyScore")) : 0;
-const gravity = 0.25;
-const jump = 4.6;
+const gravity = 0.25 * scale;
+const jump = 4.6 * scale;
 let pipes = [];
-const pipeGap = 85;
-const pipeWidth = 53;
-let gameSpeed = 2;
-const groundY = canvas.height - 60; // Red line position
+const pipeGap = 85 * scale;
+const pipeWidth = 53 * scale;
+let gameSpeed = 2 * scale;
+const groundY = baseHeight * scale - 60 * scale; // Red line position
 
 // ===== GAME STATE =====
 let state = 0; // 0 = ready, 1 = playing, 2 = over
 
 // ===== BIRD =====
 let bird = {
-    x: 50,
-    y: 150,
-    radius: 12,
+    x: 50 * scale,
+    y: 150 * scale,
+    radius: 12 * scale,
     speed: 0,
     draw: function(){
         ctx.beginPath();
@@ -95,14 +114,14 @@ let bird = {
 
 // ===== PIPE LOGIC =====
 function spawnPipe(){
-    let yPos = -150 * (Math.random() + 1);
+    let yPos = -150 * scale * (Math.random() + 1);
     pipes.push({ x: canvas.width, y: yPos });
 }
 function drawPipes(){
     ctx.fillStyle = "green";
     pipes.forEach(p => {
-        ctx.fillRect(p.x, p.y, pipeWidth, 400); // top
-        ctx.fillRect(p.x, p.y + 400 + pipeGap, pipeWidth, 400); // bottom
+        ctx.fillRect(p.x, p.y, pipeWidth, 400 * scale); // top
+        ctx.fillRect(p.x, p.y + 400 * scale + pipeGap, pipeWidth, 400 * scale); // bottom
     });
 }
 function updatePipes(){
@@ -111,7 +130,7 @@ function updatePipes(){
 
         // Collision check
         if (bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + pipeWidth &&
-            (bird.y - bird.radius < p.y + 400 || bird.y + bird.radius > p.y + 400 + pipeGap)) {
+            (bird.y - bird.radius < p.y + 400 * scale || bird.y + bird.radius > p.y + 400 * scale + pipeGap)) {
             state = 2;
         }
 
@@ -127,7 +146,7 @@ function updatePipes(){
 // ===== DRAW GROUND LINE =====
 function drawGround(){
     ctx.fillStyle = "red";
-    ctx.fillRect(0, groundY, canvas.width, 5); // thin red line
+    ctx.fillRect(0, groundY, canvas.width, 5 * scale); // thin red line
 }
 
 // ===== GAME LOOP =====
@@ -136,45 +155,4 @@ function draw(){
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     drawPipes();
-    bird.draw();
-    drawGround();
-}
-
-function update(){
-    if(state === 1){
-        bird.update();
-        if(frames % 100 === 0) spawnPipe();
-        updatePipes();
-    }
-}
-
-function loop(){
-    update();
-    draw();
-    document.getElementById("scoreBoard").innerText = "Score: " + score;
-    frames++;
-    requestAnimationFrame(loop);
-}
-
-// ===== CONTROL =====
-canvas.addEventListener("click", function(){
-    if(state === 0){ // Start game on first click
-        state = 1;
-        bird.flap();
-    } else if(state === 1){ // Jump during game
-        bird.flap();
-    } else if(state === 2){ // Reset after game over
-        state = 0;
-        score = 0;
-        sessionStorage.setItem("flappyScore", score);
-        pipes = [];
-        bird.y = 150;
-        bird.speed = 0;
-    }
-});
-
-loop();
-</script>
-
-</body>
-</html>
+    bi
