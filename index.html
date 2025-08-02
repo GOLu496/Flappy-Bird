@@ -1,88 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Flappy Bird Clone</title>
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    canvas { display:block; margin:0 auto; background:#70c5ce; }
-    body { text-align:center; font-family:sans-serif; }
-    #score { position:absolute; top:10px; left:50%; transform:translateX(-50%); font-size:24px; color:#fff; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #70c5ce; text-align: center; }
+    canvas { display: block; margin: 0 auto; background: #70c5ce; }
+    #score { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); font-size: 24px; color: white; }
   </style>
 </head>
 <body>
-  <div id="score">Score: 0</div>
+  <div id="score">Score: 0</div>
   <canvas id="gameCanvas" width="320" height="480"></canvas>
-  <script>
-    const cvs = document.getElementById('gameCanvas');
-    const ctx = cvs.getContext('2d');
-    const scoreEl = document.getElementById('score');
 
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('score');
+
+    // Image assets (working links)
     const bird = new Image();
-    const bg = new Image();
     const pipeNorth = new Image();
     const pipeSouth = new Image();
     const fg = new Image();
 
-    bird.src = 'https://i.imgur.com/QKX6XHk.png';
-    pipeNorth.src = 'https://i.imgur.com/z4d4kWk.png';
-    pipeSouth.src = 'https://i.imgur.com/Y1oW1c6.png';
-    bg.src = ''; fg.src = '';
+    bird.src = 'https://raw.githubusercontent.com/Ga6i/FlappyBird-Clone/master/bird.png';
+    pipeNorth.src = 'https://raw.githubusercontent.com/Ga6i/FlappyBird-Clone/master/pipeNorth.png';
+    pipeSouth.src = 'https://raw.githubusercontent.com/Ga6i/FlappyBird-Clone/master/pipeSouth.png';
+    fg.src = 'https://raw.githubusercontent.com/Ga6i/FlappyBird-Clone/master/fg.png';
 
-    const gap = 120;
+    // Game variables
+    const gap = 100;
     let constant;
 
-    let bX = 50, bY = 150;
+    let birdX = 50;
+    let birdY = 150;
     const gravity = 1.5;
-    const jump = 30;
+    const jump = 25;
 
     let score = 0;
 
-    document.addEventListener('keydown', () => bY -= jump);
-    cvs.addEventListener('click', () => bY -= jump);
+    // Control
+    document.addEventListener('keydown', moveUp);
+    canvas.addEventListener('click', moveUp);
+
+    function moveUp() {
+      birdY -= jump;
+    }
 
     const pipes = [];
-    pipes[0] = { x: cvs.width, y: 0 };
+    pipes[0] = { x: canvas.width, y: 0 };
 
     function draw() {
-      ctx.fillStyle = "#70c5ce";
-      ctx.fillRect(0,0,cvs.width,cvs.height);
+      ctx.fillStyle = '#70c5ce';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       for (let i = 0; i < pipes.length; i++) {
         constant = pipeNorth.height + gap;
+
         ctx.drawImage(pipeNorth, pipes[i].x, pipes[i].y);
         ctx.drawImage(pipeSouth, pipes[i].x, pipes[i].y + constant);
 
         pipes[i].x -= 2;
 
-        if (pipes[i].x === 150) {
-          pipes.push({ x: cvs.width, y: Math.floor(Math.random() * pipeNorth.height) - pipeNorth.height });
+        if (pipes[i].x === 125) {
+          pipes.push({
+            x: canvas.width,
+            y: Math.floor(Math.random() * pipeNorth.height) - pipeNorth.height
+          });
         }
 
-        if (bX + bird.width >= pipes[i].x &&
-            bX <= pipes[i].x + pipeNorth.width &&
-            (bY <= pipes[i].y + pipeNorth.height ||
-             bY + bird.height >= pipes[i].y + constant) ||
-            bY + bird.height >= cvs.height) {
-          location.reload(); // restart game
+        // Collision detection
+        if (
+          birdX + bird.width >= pipes[i].x &&
+          birdX <= pipes[i].x + pipeNorth.width &&
+          (birdY <= pipes[i].y + pipeNorth.height ||
+            birdY + bird.height >= pipes[i].y + constant) ||
+          birdY + bird.height >= canvas.height - fg.height
+        ) {
+          location.reload(); // Game Over
         }
 
         if (pipes[i].x === 5) {
           score++;
-          scoreEl.textContent = 'Score: ' + score;
+          scoreDisplay.innerText = 'Score: ' + score;
         }
       }
 
-      ctx.drawImage(bird, bX, bY);
-      bY += gravity;
+      ctx.drawImage(fg, 0, canvas.height - fg.height);
+      ctx.drawImage(bird, birdX, birdY);
+
+      birdY += gravity;
 
       requestAnimationFrame(draw);
     }
 
-    // Wait till images loaded to start
-    bird.onload = function() {
-      pipeNorth.onload = pipeSouth.onload = function() {
-        draw();
+    // Start game after assets load
+    fg.onload = () => {
+      pipeNorth.onload = () => {
+        pipeSouth.onload = () => {
+          bird.onload = () => {
+            draw();
+          };
+        };
       };
     };
   </script>
