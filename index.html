@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Flappy Bird Game</title>
+<title>Flappy Bird Red with Ground Line</title>
 <style>
     body {
         margin: 0;
@@ -23,6 +23,7 @@
         font-size: 24px;
         color: white;
         text-shadow: 2px 2px 4px #000;
+        z-index: 10;
     }
     #ad-container {
         position: fixed;
@@ -33,6 +34,7 @@
         background: #fff;
         padding: 5px;
         border-top: 1px solid #ccc;
+        z-index: 10;
     }
 </style>
 </head>
@@ -47,127 +49,121 @@
 </div>
 
 <script>
-// ======== GAME VARIABLES ========
+// ===== GAME VARIABLES =====
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 let frames = 0;
 let score = sessionStorage.getItem("flappyScore") ? parseInt(sessionStorage.getItem("flappyScore")) : 0;
-let best = 0;
-const DEGREE = Math.PI/180;
+const gravity = 0.25;
+const jump = 4.6;
+let pipes = [];
+const pipeGap = 85;
+const pipeWidth = 53;
+let gameSpeed = 2;
+const groundY = canvas.height - 60; // Red line position
 
-// ======== SPRITE LOADING ========
-const sprite = new Image();
-sprite.src = "https://i.ibb.co/Q9yv5Jk/sprite.png";
+// ===== GAME STATE =====
+let state = 0; // 0 = ready, 1 = playing, 2 = over
 
-// ======== GAME STATES ========
-const state = {
-    current : 0,
-    getReady : 0,
-    game : 1,
-    over : 2
-};
-
-// ======== CONTROL ========
-canvas.addEventListener("click", function(){
-    switch(state.current){
-        case state.getReady:
-            state.current = state.game;
-            break;
-        case state.game:
-            bird.flap();
-            break;
-        case state.over:
-            pipes.reset();
-            score = 0;
-            sessionStorage.setItem("flappyScore", score);
-            state.current = state.getReady;
-            break;
-    }
-});
-
-// ======== BIRD ========
-const bird = {
-    animation : [
-        {sX: 276, sY: 112},
-        {sX: 276, sY: 139},
-        {sX: 276, sY: 164},
-        {sX: 276, sY: 139}
-    ],
-    x : 50,
-    y : 150,
-    w : 34,
-    h : 26,
-
-    radius : 12,
-    frame : 0,
-
-    gravity : 0.25,
-    jump : 4.6,
-    speed : 0,
-    rotation : 0,
-
-    draw : function(){
-        let birdFrame = this.animation[this.frame];
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.rotation);
-        ctx.drawImage(sprite, birdFrame.sX, birdFrame.sY, this.w, this.h, - this.w/2, - this.h/2, this.w, this.h);
-        ctx.restore();
+// ===== BIRD =====
+let bird = {
+    x: 50,
+    y: 150,
+    radius: 12,
+    speed: 0,
+    draw: function(){
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+        ctx.fillStyle = "red";
+        ctx.fill();
+        ctx.closePath();
     },
-
-    flap : function(){
-        this.speed = - this.jump;
+    flap: function(){
+        this.speed = -jump;
     },
-
     update: function(){
-        // flap animation
-        let period = state.current == state.getReady ? 10 : 5;
-        this.frame += frames % period == 0 ? 1 : 0;
-        this.frame = this.frame % this.animation.length;
+        this.speed += gravity;
+        this.y += this.speed;
 
-        if(state.current == state.getReady){
-            this.y = 150;
-            this.rotation = 0 * DEGREE;
-        } else {
-            this.speed += this.gravity;
-            this.y += this.speed;
-
-            if(this.y + this.h/2 >= canvas.height - 80){
-                this.y = canvas.height - 80 - this.h/2;
-                if(state.current == state.game){
-                    state.current = state.over;
-                }
-            }
-
-            // rotate
-            if(this.speed >= this.jump){
-                this.rotation = 90 * DEGREE;
-                this.frame = 1;
-            } else {
-                this.rotation = -25 * DEGREE;
-            }
+        // Red line collision
+        if(this.y + this.radius >= groundY){
+            this.y = groundY - this.radius;
+            state = 2; // Game over
         }
     }
 };
 
-// ======== PIPES ========
-const pipes = {
-    position : [],
+// ===== PIPE LOGIC =====
+function spawnPipe(){
+    let yPos = -150 * (Math.random() + 1);
+    pipes.push({ x: canvas.width, y: yPos });
+}
+function drawPipes(){
+    ctx.fillStyle = "green";
+    pipes.forEach(p => {
+        ctx.fillRect(p.x, p.y, pipeWidth, 400); // top
+        ctx.fillRect(p.x, p.y + 400 + pipeGap, pipeWidth, 400); // bottom
+    });
+}
+function updatePipes(){
+    pipes.forEach((p, i) => {
+        p.x -= gameSpeed;
 
-    top : { sX: 553, sY: 0 },
-    bottom : { sX: 502, sY: 0 },
+        // Collision check
+        if (bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + pipeWidth &&
+            (bird.y - bird.radius < p.y + 400 || bird.y + bird.radius > p.y + 400 + pipeGap)) {
+            state = 2;
+        }
 
-    w : 53,
-    h : 400,
-    gap : 85,
-    maxYPos : -150,
-    dx : 2,
+        // Remove off-screen pipes & add score
+        if(p.x + pipeWidth <= 0){
+            pipes.splice(i, 1);
+            score++;
+            sessionStorage.setItem("flappyScore", score);
+        }
+    });
+}
 
-    draw : function(){
-        for(let i = 0; i < this.position.length; i++){
-            let p = this.position[i];
+// ===== DRAW GROUND LINE =====
+function drawGround(){
+    ctx.fillStyle = "red";
+    ctx.fillRect(0, groundY, canvas.width, 5); // thin red line
+}
 
-            let topYPos = p.y;
-            let bottomYPos = p.y + this.h + this.gap;
+// ===== GAME LOOP =====
+function draw(){
+    ctx.fillStyle = "#70c5ce";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // top pipe
+    drawPipes();
+    bird.draw();
+    drawGround();
+}
+
+function update(){
+    if(state === 1){
+        bird.update();
+        if(frames % 100 === 0) spawnPipe();
+        updatePipes();
+    }
+}
+
+function loop(){
+    update();
+    draw();
+    document.getElementById("scoreBoard").innerText = "Score: " + score;
+    frames++;
+    requestAnimationFrame(loop);
+}
+
+// ===== CONTROL =====
+canvas.addEventListener("click", function(){
+    if(state === 0){ // Start game on first click
+        state = 1;
+        bird.flap();
+    } else if(state === 1){ // Jump during game
+        bird.flap();
+    } else if(state === 2){ // Reset after game over
+        state = 0;
+        score = 0;
+        sessionStorage.setItem("flappyScore", score)
