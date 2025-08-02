@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Flappy Bird Responsive Layout</title>
+<title>Flappy Bird Responsive + Ads</title>
 <style>
     body {
         margin: 0;
@@ -15,22 +15,19 @@
         align-items: center;
         height: 100vh;
     }
-
-    /* Game wrapper for desktop */
+    /* Game wrapper */
     .game-wrapper {
         display: flex;
         align-items: center;
         justify-content: center;
         position: relative;
     }
-
-    /* Canvas style */
+    /* Canvas */
     #gameCanvas {
         background: #70c5ce;
         display: block;
     }
-
-    /* Score board */
+    /* Score */
     #scoreBoard {
         position: absolute;
         top: 10px;
@@ -41,8 +38,7 @@
         text-shadow: 2px 2px 4px #000;
         z-index: 10;
     }
-
-    /* Ads for desktop (side ads) */
+    /* Desktop ads */
     .side-ad {
         width: 120px;
         height: 600px;
@@ -53,7 +49,6 @@
         align-items: center;
         margin: 0 10px;
     }
-
     /* Mobile bottom ad */
     #bottom-ad {
         display: none;
@@ -69,7 +64,6 @@
         font-size: 14px;
         z-index: 10;
     }
-
     /* Responsive rules */
     @media (min-width: 1024px) {
         .side-ad { display: flex; }
@@ -83,48 +77,188 @@
 </head>
 <body>
 
-<!-- Left ad for desktop -->
 <div class="side-ad">[Left Ad]</div>
 
-<!-- Game wrapper -->
 <div class="game-wrapper">
     <div id="scoreBoard">Score: 0</div>
-    <canvas id="gameCanvas" width="320" height="480"></canvas>
+    <canvas id="gameCanvas"></canvas>
 </div>
 
-<!-- Right ad for desktop -->
 <div class="side-ad">[Right Ad]</div>
 
-<!-- Bottom ad for mobile -->
 <div id="bottom-ad">[Bottom Ad]</div>
 
 <script>
-// ===== Responsive Game Size =====
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+let scale = 1;
+let groundHeight;
+let groundY;
+
 function resizeGame() {
     if (window.innerWidth >= 1024) {
-        // Desktop - fixed mobile-like size
+        // Desktop fixed mobile-like size
         canvas.width = 320;
         canvas.height = 480;
     } else {
-        // Mobile - full width, height minus ad
+        // Mobile fullscreen minus bottom ad
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight - 50;
     }
+    scale = canvas.width / 320;
+    groundHeight = 60 * scale;
+    groundY = canvas.height - groundHeight;
 }
 resizeGame();
 window.addEventListener("resize", resizeGame);
 
-// ===== Simple test draw =====
-function testDraw() {
+// ===== GAME VARIABLES =====
+let frames = 0;
+let score = sessionStorage.getItem("flappyScore") ? parseInt(sessionStorage.getItem("flappyScore")) : 0;
+const gravity = 0.25 * scale;
+const jump = 4.6 * scale;
+let pipes = [];
+const pipeGap = 85 * scale;
+const pipeWidth = 53 * scale;
+let gameSpeed = 2 * scale;
+let state = 0;
+
+// ===== FIRE PARTICLES =====
+let fireParticles = [];
+function createFireParticle() {
+    fireParticles.push({
+        x: Math.random() * canvas.width,
+        y: groundY + Math.random() * 5,
+        size: Math.random() * 4 + 2,
+        speedY: Math.random() * -1 - 0.5,
+        alpha: 1
+    });
+}
+function drawFire() {
+    for (let i = 0; i < fireParticles.length; i++) {
+        let p = fireParticles[i];
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, ${Math.floor(100 + Math.random() * 155)}, 0, ${p.alpha})`;
+        ctx.fill();
+        ctx.closePath();
+        p.y += p.speedY;
+        p.alpha -= 0.02;
+        if (p.alpha <= 0) {
+            fireParticles.splice(i, 1);
+            i--;
+        }
+    }
+}
+
+// ===== BIRD =====
+let bird = {
+    x: 50 * scale,
+    y: 150 * scale,
+    radius: 12 * scale,
+    speed: 0,
+    draw: function(){
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+        ctx.fillStyle = "red";
+        ctx.fill();
+        ctx.closePath
+();
+    },
+    flap: function(){
+        this.speed = -jump;
+    },
+    update: function(){
+        this.speed += gravity;
+        this.y += this.speed;
+        if(this.y + this.radius >= groundY){
+            this.y = groundY - this.radius;
+            state = 2;
+        }
+    }
+};
+
+// ===== PIPES =====
+function spawnPipe(){
+    let maxPipeHeight = groundY - pipeGap - 50 * scale;
+    let yPos = -Math.random() * (maxPipeHeight / 2) - 100 * scale;
+    pipes.push({ x: canvas.width, y: yPos });
+}
+function drawPipes(){
+    ctx.fillStyle = "green";
+    pipes.forEach(p => {
+        ctx.fillRect(p.x, p.y, pipeWidth, 400 * scale);
+        ctx.fillRect(p.x, p.y + 400 * scale + pipeGap, pipeWidth, groundY - (p.y + 400 * scale + pipeGap));
+    });
+}
+function updatePipes(){
+    pipes.forEach((p, i) => {
+        p.x -= gameSpeed;
+        if (bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + pipeWidth &&
+            (bird.y - bird.radius < p.y + 400 * scale || bird.y + bird.radius > p.y + 400 * scale + pipeGap)) {
+            state = 2;
+        }
+        if(p.x + pipeWidth <= 0){
+            pipes.splice(i, 1);
+            score++;
+            sessionStorage.setItem("flappyScore", score);
+        }
+    });
+}
+
+// ===== GROUND =====
+function drawGround(){
+    ctx.fillStyle = "red";
+    ctx.fillRect(0, groundY, canvas.width, 5 * scale);
+}
+
+// ===== GAME LOOP =====
+function draw(){
     ctx.fillStyle = "#70c5ce";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "red";
-    ctx.fillRect(0, canvas.height - 5, canvas.width, 5); // red bottom line
+    drawPipes();
+    bird.draw();
+    drawGround();
+    drawFire();
 }
-setInterval(testDraw, 30);
+function update(){
+    if(state === 1){
+        bird.update();
+        if(frames % 100 === 0) spawnPipe();
+        updatePipes();
+        if(frames % 3 === 0) createFireParticle();
+    }
+}
+function loop(){
+    update();
+    draw();
+    document.getElementById("scoreBoard").innerText = "Score: " + score;
+    frames++;
+    requestAnimationFrame(loop);
+}
+
+// ===== CONTROLS =====
+canvas.addEventListener("click", handleInput);
+canvas.addEventListener("touchstart", handleInput);
+
+function handleInput(){
+    if(state === 0){
+        state = 1;
+        bird.flap();
+    } else if(state === 1){
+        bird.flap();
+    } else if(state === 2){
+        state = 0;
+        score = 0;
+        sessionStorage.setItem("flappyScore", score);
+        pipes = [];
+        bird.y = 150 * scale;
+        bird.speed = 0;
+    }
+}
+
+loop();
 </script>
 
 </body>
